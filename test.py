@@ -11,12 +11,25 @@ io_pairs = [
     ((16, 4, 3, 1), 520),
 ]
 
+# io_pairs = [
+#     ((2, 3, 12, 1), 156),
+#     ((0, 14, 3, 11), 196),
+#     ((4, 1, 6, 1), 112),
+#     ((0, 7, 13, 2), 105),
+#     ((1, 2, 13, 1), 56),
+#     ((4, 2, 7, 1), 256),
+#     ((4, 10, 12, 1), 2080),
+#     ((1, 1, 4, 9), 26),
+#     ((3, 3, 3, 9), 288),
+#     ((4, 14, 5, 3), 1792),
+# ]
+
 def test(pairs):
     # MANUALLY REPLACE THE "a + b + c + d" WITH A PYTHON EXPRESSION
     # CORRESPONDING TO YOUR ANSWER FROM Z3. If its correct, the test will print
     # 'Your program satisfies all IO pairs!'
     def program(a, b, c, d):
-      return (a + b + c + d) & 0xFFFF
+        return (((a * b) | d) << c) & 0xFFFF
 
     sat = True
     for (a, b, c, d), o in pairs:
