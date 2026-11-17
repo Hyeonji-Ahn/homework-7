@@ -45,11 +45,36 @@ def add(i, x1, x2):
 def exactly_one_flag(nums):
    return Sum([If(Bool(f'B{i}'), 1, 0) for i in nums]) == 1
 
+# possible choices to make
+ops = ['*', '|', '<<', '+']
+input_perm = list(permutations(['a', 'b', 'c', 'd']))
+shapes = [
+    # ((x0 0th x1) 1st x2) 2nd x3
+    '((x0 op0 x1) op1 x2) op2 x3',
+    # (x0 0th (x1 1st x2)) 2nd x3
+    '(x0 op0 (x1 op1 x2)) op2 x3',
+    # (x0 0th x1) 1st (x2 2nd x3)
+    '(x0 op0 x1) op1 (x2 op2 x3)',
+    # x0 0th ((x1 1st x2) 2nd x3)
+    'x0 op0 ((x1 op1 x2) op2 x3)',
+    # x0 0th (x1 1st (x2 2nd x3))
+    'x0 op0 (x1 op1 (x2 op2 x3))'
+]
+
+# choices that solver make
+ops_chosen = [Int('op0'), Int('op1'), Int('op2')]
+input_perm_chosen = Int('input_perm')
+shape_chosen = Int('shapes')
+
 # position of operator (1st, 2nd, 3rd) and two different inputs
 def op(n, x1, x2):
-    return mul(4*n, x1, x2)+lor(4*n+1, x1, x2)+shl(4*n+2, x1, x2)+add(4*n+3, x1, x2)
+    c = ops_chosen[n]
+    return If(c == 0, x1*x2,
+            If (c == 1, x1 | x2,
+                If (c==2, x1<<x2, 
+                        x1+x2)))
 
-def shapes(x0, x1, x2, x3):
+def trees(x0, x1, x2, x3):
     return [
         # ((x0 0th x1) 1st x2) 2nd x3
         op(2, op(1, op(0, x0, x1), x2), x3),
@@ -67,86 +92,27 @@ def shapes(x0, x1, x2, x3):
 def formula(pairs):
     constraints = []
 
-    # three operation slot each take one operator out of four
-    for ops in range(3):
-        constraints.append(exactly_one_flag([4*ops+i for i in range(4)]))
+    # one choice for each must be in valid index of choice
+    for c in ops_chosen:
+        constraints.append(And(0<= c, c<len(ops)))
+    constraints.append(And(0<= input_perm_chosen, input_perm_chosen<len(input_perm)))
+    constraints.append(And(0<=shape_chosen, shape_chosen<len(shapes)))
 
-    # inputs flags 12-36 (24 permutation of orderings)
-    # only one of those permutation is correct
-    constraints.append(exactly_one_flag(range(12,36)))
-
-    # paranthesis shape should be one of five combination
-    constraints.append(exactly_one_flag(range(36,41)))
-
+    # permute through each input and output, ordering.
     for i, (inputs, output) in enumerate(pairs):
-        a,b,c,d = [BitVecVal(v,16) for v in inputs]
-
-        options = []
-        # go through constraint 12~36 for inputs
-        for j, (x0, x1, x2, x3) in enumerate(permutations([a,b,c,d])):
-            # go through constraint 36~41 for all parenthesis combination
-            for k, tree in enumerate(shapes(x0, x1, x2, x3)):
-                options.append(And(Bool(f'B{12+j}'), Bool(f'B{36+k}'), tree == output))
-        constraints.append(Or(options))
+        # map input to variable
+        val = dict(zip(['a','b', 'c', 'd'], inputs))
+        # try various ordering
+        for j, order in enumerate(input_perm):
+            x = [BitVecVal(val[name], 16) for name in order]
+            # try various parenthesis shape 
+            for k, tree in enumerate(trees(*x)):
+                constraints.append(Implies(And(input_perm_chosen==j, shape_chosen==k), tree == output))
 
     return And(constraints)
-
-# def decoder(ans):
-#     ops = ['*', '|', '<<', '+']
-#     input_perm = list(permutations(['a', 'b', 'c', 'd']))
-#     shapes = [
-#         # ((x0 0th x1) 1st x2) 2nd x3
-#         '((x0 op0 x1) op1 x2) op2 x3',
-#         # (x0 0th (x1 1st x2)) 2nd x3
-#         '(x0 op0 (x1 op1 x2)) op2 x3',
-#         # (x0 0th x1) 1st (x2 2nd x3)
-#         '(x0 op0 x1) op1 (x2 op2 x3)',
-#         # x0 0th ((x1 1st x2) 2nd x3)
-#         'x0 op0 ((x1 op1 x2) op2 x3)',
-#         # x0 0th (x1 1st (x2 2nd x3))
-#         'x0 op0 (x1 op1 (x2 op2 x3))'
-#     ]
-
-#     # chose shape
-#     for i in range(5):
-#         if is_true(ans[Bool(f'B{i+36}')]):
-#             expr = shapes[i]
-#             break
-
-#     # choose input
-#     for i in range(24):
-#         if is_true(ans[Bool(f'B{i+12}')]):
-#             order = input_perm[i]
-#             break
-
-#     for i in range(4):
-#         expr = expr.replace(f'x{i}', order[i])
-
-#     # choose operator
-#     for i in range(3):
-#         for j in range(4):
-#             if is_true(ans[Bool(f'B{4*i+j}')]):
-#                 op = ops[j]
-#                 break
-#         expr = expr.replace(f'op{i}', op)
-
-#     return expr
 
 if __name__ == '__main__':
     s = formula(io_pairs)
     print(f'Z3 formula: {s}')
     print('Z3 Solution:')
     solve(s)
-
-# if __name__ == '__main__':
-#     s = formula(io_pairs)
-#     print(f'Z3 formula: {s}')
-#     print('Z3 Solution:')
-#     solver = Solver()
-#     solver.add(s)
-#     if solver.check() == sat:
-#         answer = solver.model()
-#         print(answer)
-#         print(f'answer: {decoder(answer)}')
-#     else:
-#         print('no solution')
