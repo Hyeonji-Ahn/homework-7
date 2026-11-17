@@ -91,57 +91,62 @@ def formula(pairs):
 
     return And(constraints)
 
-def decoder(ans):
-    ops = ['*', '|', '<<', '+']
-    input_perm = list(permutations(['a', 'b', 'c', 'd']))
-    shapes = [
-        # ((x0 0th x1) 1st x2) 2nd x3
-        '((x0 op0 x1) op1 x2) op2 x3',
-        # (x0 0th (x1 1st x2)) 2nd x3
-        '(x0 op0 (x1 op1 x2)) op2 x3',
-        # (x0 0th x1) 1st (x2 2nd x3)
-        '(x0 op0 x1) op1 (x2 op2 x3)',
-        # x0 0th ((x1 1st x2) 2nd x3)
-        'x0 op0 ((x1 op1 x2) op2 x3)',
-        # x0 0th (x1 1st (x2 2nd x3))
-        'x0 op0 (x1 op1 (x2 op2 x3))'
-    ]
+# def decoder(ans):
+#     ops = ['*', '|', '<<', '+']
+#     input_perm = list(permutations(['a', 'b', 'c', 'd']))
+#     shapes = [
+#         # ((x0 0th x1) 1st x2) 2nd x3
+#         '((x0 op0 x1) op1 x2) op2 x3',
+#         # (x0 0th (x1 1st x2)) 2nd x3
+#         '(x0 op0 (x1 op1 x2)) op2 x3',
+#         # (x0 0th x1) 1st (x2 2nd x3)
+#         '(x0 op0 x1) op1 (x2 op2 x3)',
+#         # x0 0th ((x1 1st x2) 2nd x3)
+#         'x0 op0 ((x1 op1 x2) op2 x3)',
+#         # x0 0th (x1 1st (x2 2nd x3))
+#         'x0 op0 (x1 op1 (x2 op2 x3))'
+#     ]
 
-    # chose shape
-    for i in range(5):
-        if is_true(ans[Bool(f'B{i+36}')]):
-            expr = shapes[i]
-            break
+#     # chose shape
+#     for i in range(5):
+#         if is_true(ans[Bool(f'B{i+36}')]):
+#             expr = shapes[i]
+#             break
 
-    # choose input
-    for i in range(24):
-        if is_true(ans[Bool(f'B{i+12}')]):
-            order = input_perm[i]
-            break
+#     # choose input
+#     for i in range(24):
+#         if is_true(ans[Bool(f'B{i+12}')]):
+#             order = input_perm[i]
+#             break
 
-    for i in range(4):
-        expr = expr.replace(f'x{i}', order[i])
+#     for i in range(4):
+#         expr = expr.replace(f'x{i}', order[i])
 
-    # choose operator
-    for i in range(3):
-        for j in range(4):
-            if is_true(ans[Bool(f'B{4*i+j}')]):
-                op = ops[j]
-                break
-        expr = expr.replace(f'op{i}', op)
+#     # choose operator
+#     for i in range(3):
+#         for j in range(4):
+#             if is_true(ans[Bool(f'B{4*i+j}')]):
+#                 op = ops[j]
+#                 break
+#         expr = expr.replace(f'op{i}', op)
 
-    return expr
-
+#     return expr
 
 if __name__ == '__main__':
     s = formula(io_pairs)
     print(f'Z3 formula: {s}')
     print('Z3 Solution:')
-    solver = Solver()
-    solver.add(s)
-    if solver.check() == sat:
-        answer = solver.model()
-        print(answer)
-        print(f'answer: {decoder(answer)}')
-    else:
-        print('no solution')
+    solve(s)
+
+# if __name__ == '__main__':
+#     s = formula(io_pairs)
+#     print(f'Z3 formula: {s}')
+#     print('Z3 Solution:')
+#     solver = Solver()
+#     solver.add(s)
+#     if solver.check() == sat:
+#         answer = solver.model()
+#         print(answer)
+#         print(f'answer: {decoder(answer)}')
+#     else:
+#         print('no solution')
